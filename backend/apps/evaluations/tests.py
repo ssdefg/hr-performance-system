@@ -97,7 +97,7 @@ class ManagerEvaluationApiTests(APITestCase):
         self.assertEqual(read_response.data['status'], 'DRAFT')
         self.assertEqual(read_response.data['scores'][0]['score'], 4)
 
-    def test_submit_requires_all_criteria_and_locks_after_submission(self):
+    def test_submit_requires_all_criteria_and_allows_re_editing(self):
         incomplete = self.client.post(
             f'/api/evaluations/reviews/{self.employee.employee_id}/submit/',
             {'scores': [{'criteria_id': self.criteria[0].id, 'score': 5}]},
@@ -112,14 +112,24 @@ class ManagerEvaluationApiTests(APITestCase):
         submitted = self.client.post(
             f'/api/evaluations/reviews/{self.employee.employee_id}/submit/', payload, format='json'
         )
-        locked = self.client.post(
-            f'/api/evaluations/reviews/{self.employee.employee_id}/draft/', payload, format='json'
-        )
 
         self.assertEqual(submitted.status_code, 200)
         self.assertEqual(submitted.data['status'], 'SUBMITTED')
         self.assertEqual(submitted.data['raw_score'], 100.0)
-        self.assertEqual(locked.status_code, 403)
+
+        # Re-edit with different scores after submission
+        update_payload = {'scores': [
+            {'criteria_id': self.criteria[0].id, 'score': 4},
+            {'criteria_id': self.criteria[1].id, 'score': 5},
+        ]}
+        updated = self.client.post(
+            f'/api/evaluations/reviews/{self.employee.employee_id}/submit/', update_payload, format='json'
+        )
+
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.data['status'], 'SUBMITTED')
+        # 4/5 * 40 + 5/5 * 60 = 32 + 60 = 92.0
+        self.assertEqual(updated.data['raw_score'], 92.0)
 
 
 class EmployeeReviewApiTests(APITestCase):

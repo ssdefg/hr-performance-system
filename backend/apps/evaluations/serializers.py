@@ -40,7 +40,8 @@ class EvaluationReviewSerializer(serializers.ModelSerializer):
         model = EvaluationReview
         fields = (
             'id', 'employee_id', 'employee_name', 'team_name', 'status', 'scores',
-            'raw_score', 'final_score', 'is_capped', 'submitted_at', 'updated_at',
+            'raw_score', 'final_score', 'is_capped', 'strengths', 'improvements', 'comment',
+            'submitted_at', 'updated_at',
         )
 
 
@@ -51,6 +52,9 @@ class ScoreInputSerializer(serializers.Serializer):
 
 class ReviewScoresInputSerializer(serializers.Serializer):
     scores = ScoreInputSerializer(many=True)
+    strengths = serializers.ListField(child=serializers.CharField(max_length=100), required=False, default=list)
+    improvements = serializers.ListField(child=serializers.CharField(max_length=100), required=False, default=list)
+    comment = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
 
     def validate_scores(self, scores):
         criteria_ids = [item['criteria_id'] for item in scores]

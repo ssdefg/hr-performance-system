@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { IconPlus, IconPencil, IconTrash } from '@tabler/icons-vue'
-import client from '../../api/client'
+import client, { getErrorMessage } from '../../api/client'
 
 const criteria = ref([])
 const loading = ref(true)
@@ -19,8 +19,8 @@ async function loadCriteria() {
   try {
     const { data } = await client.get('/evaluations/criteria/')
     criteria.value = data
-  } catch {
-    error.value = '평가 항목을 불러오지 못했습니다.'
+  } catch (requestError) {
+    error.value = getErrorMessage(requestError, '평가 항목을 불러오지 못했습니다.')
   } finally {
     loading.value = false
   }
@@ -47,7 +47,7 @@ async function saveCriteria() {
     modalOpen.value = false
     await loadCriteria()
   } catch (requestError) {
-    error.value = requestError.response?.data?.name?.[0] || requestError.response?.data?.weight?.[0] || '평가 항목을 저장하지 못했습니다.'
+    error.value = getErrorMessage(requestError, '평가 항목을 저장하지 못했습니다.')
   } finally {
     saving.value = false
   }

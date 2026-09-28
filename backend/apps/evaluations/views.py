@@ -17,7 +17,12 @@ from apps.evaluations.serializers import (
     EvaluationReviewSerializer,
     ReviewScoresInputSerializer,
 )
-from apps.evaluations.services import calculate_final_score, calculate_raw_score
+from apps.evaluations.services import (
+    calculate_final_score,
+    calculate_grade,
+    calculate_grade_roadmap,
+    calculate_raw_score,
+)
 from apps.organizations.models import Team
 
 
@@ -83,6 +88,9 @@ def serialize_review(employee, manager, review=None):
             'raw_score': None,
             'final_score': None,
             'is_capped': False,
+            'strengths': [],
+            'improvements': [],
+            'comment': '',
             'submitted_at': None,
             'updated_at': None,
         }
@@ -149,12 +157,10 @@ def save_review(request, employee_id, submit):
             employee=employee,
             evaluator=request.user,
         ).first()
-        if review and review.status == 'SUBMITTED':
-            raise PermissionDenied('제출된 평가는 잠겨 있어 수정할 수 없습니다.')
         if review is None:
             review = EvaluationReview(employee=employee, evaluator=request.user)
 
-        review.status = 'SUBMITTED' if submit else 'DRAFT'
+        review.status = 'SUBMITTED' if submit else (review.status or 'DRAFT')
         review.raw_score = calculate_raw_score(
             (score_map[criteria.id], criteria.weight)
             for criteria in active_criteria
@@ -162,6 +168,15 @@ def save_review(request, employee_id, submit):
         )
         team_bonus = employee.team.bonus_score if employee.team_id else 0
         review.final_score, review.is_capped = calculate_final_score(review.raw_score, team_bonus)
+        
+        # Save qualitative feedback
+        if 'strengths' in serializer.validated_data:
+            review.strengths = serializer.validated_data['strengths']
+        if 'improvements' in serializer.validated_data:
+            review.improvements = serializer.validated_data['improvements']
+        if 'comment' in serializer.validated_data:
+            review.comment = serializer.validated_data['comment']
+
         if submit:
             review.submitted_at = timezone.now()
         review.save()
@@ -209,4 +224,6 @@ def my_review(request):
     data = EvaluationReviewSerializer(review).data
     data['team_bonus'] = review.employee.team.bonus_score if review.employee.team_id else 0.0
     data['evaluator_name'] = review.evaluator.name
+    data['grade'] = calculate_grade(review.final_score)
+    data['roadmap'] = calculate_grade_roadmap(review.final_score)
     return Response(data)

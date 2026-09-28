@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { IconPlus, IconPencil, IconTrash } from '@tabler/icons-vue'
-import client from '../../api/client'
+import client, { getErrorMessage } from '../../api/client'
 
 const teams = ref([])
 const managers = ref([])
@@ -23,8 +23,8 @@ async function loadData() {
     ])
     teams.value = teamResponse.data
     managers.value = userResponse.data
-  } catch {
-    error.value = '팀 정보를 불러오지 못했습니다.'
+  } catch (requestError) {
+    error.value = getErrorMessage(requestError, '팀 정보를 불러오지 못했습니다.')
   } finally {
     loading.value = false
   }
@@ -52,7 +52,7 @@ async function saveTeam() {
     modalOpen.value = false
     await loadData()
   } catch (requestError) {
-    error.value = requestError.response?.data?.name?.[0] || requestError.response?.data?.manager_id?.[0] || '팀을 저장하지 못했습니다.'
+    error.value = getErrorMessage(requestError, '팀을 저장하지 못했습니다.')
   } finally {
     saving.value = false
   }

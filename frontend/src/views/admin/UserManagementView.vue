@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { IconPlus, IconPencil, IconTrash } from '@tabler/icons-vue'
-import client from '../../api/client'
+import client, { getErrorMessage } from '../../api/client'
 
 const users = ref([])
 const teams = ref([])
@@ -25,8 +25,8 @@ async function loadData() {
     const [userResponse, teamResponse] = await Promise.all([client.get('/users/', { params }), client.get('/teams/')])
     users.value = userResponse.data
     teams.value = teamResponse.data
-  } catch {
-    error.value = '사원 정보를 불러오지 못했습니다.'
+  } catch (requestError) {
+    error.value = getErrorMessage(requestError, '사원 정보를 불러오지 못했습니다.')
   } finally {
     loading.value = false
   }
@@ -55,8 +55,7 @@ async function saveUser() {
     modalOpen.value = false
     await loadData()
   } catch (requestError) {
-    const details = requestError.response?.data
-    error.value = details?.employee_id?.[0] || details?.team_id?.[0] || details?.role?.[0] || '사원 정보를 저장하지 못했습니다.'
+    error.value = getErrorMessage(requestError, '사원 정보를 저장하지 못했습니다.')
   } finally {
     saving.value = false
   }
